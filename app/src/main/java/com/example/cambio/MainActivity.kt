@@ -24,12 +24,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
 import java.net.MalformedURLException
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.net.ssl.HttpsURLConnection
 
 class MainActivity : ComponentActivity() {
@@ -162,16 +167,30 @@ suspend fun buscarCotacoes(): List<Cotacao> {
         Cotacao("Euro", "6.50", "07/02/2025"),
         Cotacao("Dólar", "6.10", "09/02/2025"),
         Cotacao("Dólar", "6.06", "08/02/2025"),
-        buscarCotacaoDolar("07/02/2025")
+        buscarCotacaoDolar()
     )
 }
 
 //Recuperando a cotação do dia 07/02/2025
-suspend fun buscarCotacaoDolar(data: String): Cotacao {
-    val response:String? =mLoad("https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao=%2702-07-2025%27&\$top=100&\$format=json&\$select=cotacaoCompra,dataHoraCotacao")?.readText()
-    Log.v("Retorno:","retorno:"+response)
-    return Cotacao("Dólar", "5,75", data)
+suspend fun buscarCotacaoDolar(): Cotacao {
+    val formatador = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+    val dataHoraAtual: String = formatador.format(Date())
 
+    val response:String? = mLoad(
+        "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao='$dataHoraAtual'&\$top=100&\$format=json"
+    )?.readText()
+    val jsonObject = JSONObject(response.toString())
+    Log.v("json", jsonObject.toString())
+    val jsonArray = jsonObject.getJSONArray("value")
+    Log.v("json", jsonArray.toString())
+    val lista = jsonArray.getJSONObject(0)
+    Log.v("json", lista.toString())
+    val data = lista.getString("dataHoraCotacao")
+    Log.v("json", data.toString())
+    val cotacao = lista.getString("cotacaoCompra")
+    Log.v("json", cotacao.toString())
+
+    return Cotacao("Dólar", cotacao, "Atualizada em: $data")
 }
 suspend fun mLoad(string: String): BufferedReader? {
     val url: URL = mStringToURL(string)!!
